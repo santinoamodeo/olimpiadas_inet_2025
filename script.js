@@ -1,32 +1,6 @@
-const historial = [];
+// script.js
 
-function contarCifrasSignificativas(numeroStr) {
-  // Quitar espacios y signo negativo
-  let num = numeroStr.trim();
-  if (num[0] === '-') num = num.slice(1);
-
-  // Si es notación científica, convertir a decimal completo
-  if (num.toLowerCase().includes('e')) {
-    const n = Number(num);
-    num = n.toString();
-  }
-
-  // Quitar punto decimal para contar cifras
-  const partes = num.split('.');
-  if (partes.length === 1) {
-    // Sin decimal
-    // Cifras significativas = dígitos excepto ceros a la izquierda
-    const sinCerosIzq = partes[0].replace(/^0+/, '');
-    return sinCerosIzq.length || 1; // Al menos 1 cifra si es cero
-  } else {
-    // Con decimal
-    // Contar todos los dígitos excepto ceros a la izquierda (antes del punto)
-    const sinCerosIzq = partes[0].replace(/^0+/, '');
-    // Contar todos los dígitos en la parte entera y decimal (los ceros a la derecha después del punto son significativos)
-    return sinCerosIzq.length + partes[1].length;
-  }
-}
-
+// Función para redondear a N cifras significativas
 function redondearCifrasSignificativas(num, cifras) {
   if (num === 0) return 0;
   const d = Math.ceil(Math.log10(Math.abs(num)));
@@ -34,127 +8,76 @@ function redondearCifrasSignificativas(num, cifras) {
   return Math.round(num * factor) / factor;
 }
 
-function calcularResistencia() {
-  const voltajeInput = document.getElementById("voltaje");
-  const corrienteInput = document.getElementById("corriente");
+const form = document.getElementById("resistance-form");
+const resultadoDiv = document.getElementById("resultado");
+const historialUl = document.getElementById("historial");
 
-  const voltajeStr = voltajeInput.value;
-  const corrienteStr = corrienteInput.value;
+let historial = JSON.parse(localStorage.getItem("historialResistencia")) || [];
 
-  if (!voltajeStr || !corrienteStr) {
-    alert("Por favor, ingrese ambos valores.");
-    return;
-  }
-
-  const sigV = contarCifrasSignificativas(voltajeStr);
-  const sigI = contarCifrasSignificativas(corrienteStr);
-
-  const voltaje = Number(voltajeStr);
-  const corriente = Number(corrienteStr);
-
-  if (isNaN(voltaje) || isNaN(corriente) || corriente === 0) {
-    alert("Ingrese valores numéricos válidos y la corriente no puede ser cero.");
-    return;
-  }
-
-  const resistenciaRaw = voltaje / corriente;
-  const cifras = Math.min(sigV, sigI);
-  const resistencia = redondearCifrasSignificativas(resistenciaRaw, cifras);
-
-  document.getElementById("resultado").innerText = `${resistencia} Ω (con ${cifras} cifras significativas)`;
-
-  // Guardar en historial
-  historial.push({
-    V: voltajeStr,
-    sigV,
-    I: corrienteStr,
-    sigI,
-    R: resistencia,
-    cifras,
+function mostrarHistorial() {
+  historialUl.innerHTML = "";
+  historial.forEach((item, i) => {
+    const li = document.createElement("li");
+    li.className = "border border-gray-300 rounded-md p-2 bg-gray-50";
+    li.textContent = `V=${item.V} (${item.sigV} cifras), I=${item.I} (${item.sigI} cifras) → R=${item.R} Ω (${item.cifras} cifras)`;
+    historialUl.appendChild(li);
   });
+}
 
-  // Mostrar historial
+function guardarHistorial(v, sigV, i, sigI, r, cifras) {
+  historial.unshift({ V: v, sigV, I: i, sigI, R: r, cifras });
+  if (historial.length > 10) historial.pop();
+  localStorage.setItem("historialResistencia", JSON.stringify(historial));
   mostrarHistorial();
 }
 
-function mostrarHistorial() {
-  const historialDiv = document.getElementById("historial");
-  historialDiv.innerHTML = "";
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
 
-  historial.forEach((item, i) => {
-    const div = document.createElement("div");
-    div.classList.add("mb-2", "p-2", "border", "rounded", "bg-gray-100", "text-sm");
-    div.textContent = `${i + 1}. V=${item.V} (${item.sigV} cifras), I=${item.I} (${item.sigI} cifras) → R=${item.R} Ω (${item.cifras} cifras)`;
-    historialDiv.appendChild(div);
-  });
-}
+  const V = parseFloat(form.voltaje.value);
+  const sigV = parseInt(form.sigV.value);
+  const I = parseFloat(form.corriente.value);
+  const sigI = parseInt(form.sigI.value);
 
-// Mejor exportarPDF con estilo y formato
+  if (I === 0) {
+    resultadoDiv.textContent = "La corriente no puede ser cero.";
+    return;
+  }
+
+  // Tomamos la menor cantidad de cifras significativas
+  const cifras = Math.min(sigV, sigI);
+
+  const resistencia = V / I;
+  const resistenciaRedondeada = redondearCifrasSignificativas(resistencia, cifras);
+
+  resultadoDiv.textContent = `Resistencia: ${resistenciaRedondeada} Ω (con ${cifras} cifras significativas)`;
+
+  guardarHistorial(V, sigV, I, sigI, resistenciaRedondeada, cifras);
+});
+
+// Exportar PDF
 async function exportarPDF() {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({
-    unit: "pt",
-    format: "a4",
-  });
+  const doc = new jsPDF();
 
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 40;
-  let y = 60;
-
-  // Función para encabezado fijo en cada página
-  function encabezado() {
-    doc.setFontSize(16);
-    doc.setTextColor("#2c3e50");
-    doc.setFont("helvetica", "bold");
-    doc.text("Historial de Mediciones de Resistencia", pageWidth / 2, 40, { align: "center" });
-    doc.setDrawColor("#2980b9");
-    doc.setLineWidth(1.5);
-    doc.line(margin, 50, pageWidth - margin, 50);
-  }
-
-  // Función para pie de página con número de página y fecha
-  function piePagina(pageNum) {
-    const fecha = new Date().toLocaleString();
-    doc.setFontSize(10);
-    doc.setTextColor("#7f8c8d");
-    doc.setFont("helvetica", "normal");
-    doc.text(`Página ${pageNum}`, pageWidth - margin, doc.internal.pageSize.getHeight() - 30, { align: "right" });
-    doc.text(`Generado: ${fecha}`, margin, doc.internal.pageSize.getHeight() - 30);
-  }
-
-  // Agregar encabezado a la primera página
-  encabezado();
+  doc.setFontSize(18);
+  doc.text("Historial de Mediciones de Resistencia", 14, 20);
 
   doc.setFontSize(12);
-  doc.setTextColor("#34495e");
-  doc.setFont("helvetica", "normal");
-
+  let y = 30;
   historial.forEach((item, i) => {
     const texto = `${i + 1}. V=${item.V} (${item.sigV} cifras), I=${item.I} (${item.sigI} cifras) → R=${item.R} Ω (${item.cifras} cifras)`;
-
-    if (y > doc.internal.pageSize.getHeight() - 60) {
-      piePagina(doc.getCurrentPageInfo().pageNumber);
+    doc.text(texto, 14, y);
+    y += 10;
+    if (y > 280) {
       doc.addPage();
-      y = 60;
-      encabezado();
-      doc.setFontSize(12);
-      doc.setTextColor("#34495e");
-      doc.setFont("helvetica", "normal");
+      y = 20;
     }
-
-    doc.text(texto, margin, y);
-    y += 20;
-
-    // Línea separadora
-    doc.setDrawColor("#bdc3c7");
-    doc.setLineWidth(0.5);
-    doc.line(margin, y - 8, pageWidth - margin, y - 8);
   });
-
-  piePagina(doc.getCurrentPageInfo().pageNumber);
 
   doc.save("historial_resistencia.pdf");
 }
 
-window.calcularResistencia = calcularResistencia;
 window.exportarPDF = exportarPDF;
+
+mostrarHistorial();
