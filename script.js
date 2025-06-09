@@ -103,6 +103,7 @@ window.limpiarHistorial = limpiarHistorial;
 
 // Exportar PDF mejorado
 // Exportar PDF mejorado - Versión profesional centrada
+// Exportar PDF mejorado - Versión profesional centrada
 async function exportarPDF() {
   if (historial.length === 0) {
     alert("No hay datos en el historial para exportar");
@@ -139,8 +140,8 @@ async function exportarPDF() {
   doc.setTextColor(0, 0, 0);
   
   const infoY = 45;
-  const col1X = margin + 15;
-  const col2X = pageWidth / 2 + 15;
+  const col1X = margin + 20;
+  const col2X = pageWidth / 1.75 + 15;
   
   doc.setFont("helvetica", "bold");
   doc.text("Fecha de generación:", col1X, infoY);
@@ -157,19 +158,19 @@ async function exportarPDF() {
       styles: { halign: 'center', fillColor: [29, 78, 216], textColor: 255, fontStyle: 'bold' } 
     },
     { 
-      content: "Voltaje (V)", 
+      content: "Tensión (V)", 
       styles: { halign: 'center', fillColor: [29, 78, 216], textColor: 255, fontStyle: 'bold' } 
     },
     { 
-      content: "Corriente (A)", 
+      content: "Intensidad (A)", 
       styles: { halign: 'center', fillColor: [29, 78, 216], textColor: 255, fontStyle: 'bold' } 
     },
     { 
-      content: "Resistencia (Ω)", 
+      content: "Resistencia (Ohm)",
       styles: { halign: 'center', fillColor: [29, 78, 216], textColor: 255, fontStyle: 'bold' } 
     },
     { 
-      content: "Cifras Sig.", 
+      content: "Cifras \nSignificativas", 
       styles: { halign: 'center', fillColor: [29, 78, 216], textColor: 255, fontStyle: 'bold' } 
     }
   ];
@@ -180,15 +181,16 @@ async function exportarPDF() {
       styles: { halign: 'center' } 
     },
     { 
-      content: `${item.V} (${item.sigV} cifras)`, 
-      styles: { halign: 'center' } 
+      content: `${item.V} V`, 
+      styles: { halign: 'center', fontStyle: 'bold' } 
     },
     { 
-      content: `${item.I} (${item.sigI} cifras)`, 
-      styles: { halign: 'center' } 
+      content: `${item.I} A`, 
+      styles: { halign: 'center', fontStyle: 'bold' } 
+      
     },
     { 
-      content: item.R.toString(), 
+      content: `${item.R.toString()} Ohm`,
       styles: { halign: 'center', fontStyle: 'bold' } 
     },
     { 
@@ -224,7 +226,7 @@ async function exportarPDF() {
       1: { cellWidth: 40 },
       2: { cellWidth: 40 },
       3: { cellWidth: 40 },
-      4: { cellWidth: 25 }
+      4: { cellWidth: 35 }
     },
     margin: { 
       left: margin,
