@@ -122,7 +122,7 @@ async function exportarPDF() {
   doc.setFontSize(20);
   doc.setTextColor(29, 78, 216); // Azul
   doc.setFont("helvetica", "bold");
-  doc.text("INFORME DE CÁLCULOS DE RESISTENCIA", pageWidth / 2, 25, { align: "center" });
+  doc.text("CALCULADORA DE RESISTENCIA", pageWidth / 2, 25, { align: "center" });
   
   // Subtítulo
   doc.setFontSize(12);
@@ -240,12 +240,12 @@ async function exportarPDF() {
     doc.setPage(i);
     doc.setFontSize(10);
     doc.setTextColor(100, 116, 139);
-    doc.text(`Página ${i} de ${pageCount}`, pageWidth / 2, 285, { align: "center" });
+    doc.text(`Página ${i} de ${pageCount}`, pageWidth / 2, 280, { align: "center" });
     
     // Firma o información adicional
     doc.setFontSize(8);
-    doc.text("Documento generado automáticamente - Calculadora de Resistencia", pageWidth / 2, 290, { align: "center" });
-
+    doc.text("Calculadora de Resistencia \nTodos los Derechos Reservados | Grupo MND-ELTR-500112700-012", pageWidth / 2, 285, { align: "center" });
+    
   }
   
   // Guardar con nombre profesional
