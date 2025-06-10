@@ -32,7 +32,7 @@ function mostrarHistorial() {
       <div class="flex justify-between items-start">
         <div>
           <span class="text-xs text-gray-500">#${i+1}</span>
-          <div class="text-sm font-medium text-gray-700">R = ${item.R} Ω</div>
+          <div class="text-sm font-medium text-gray-700">R = ${item.R} Ω ± ${item.error}%</div>
         </div>
         <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${item.cifras} cifras</span>
       </div>
@@ -40,12 +40,15 @@ function mostrarHistorial() {
         <div><span class="font-medium">V:</span> ${item.V} (${item.sigV} cifras)</div>
         <div><span class="font-medium">I:</span> ${item.I} (${item.sigI} cifras)</div>
       </div>
+      <div class="mt-1 text-xs text-gray-600">
+        <span class="font-medium">Error instrumento:</span> ±${item.error}%
+      </div>
     `;
     historialUl.appendChild(li);
   });
 }
 
-function guardarHistorial(v, sigV, i, sigI, r, cifras) {
+function guardarHistorial(v, sigV, i, sigI, r, cifras, error) {
   historial.unshift({ 
     V: v, 
     sigV, 
@@ -53,6 +56,7 @@ function guardarHistorial(v, sigV, i, sigI, r, cifras) {
     sigI, 
     R: r, 
     cifras,
+    error,
     fecha: new Date().toLocaleString() 
   });
   
@@ -68,6 +72,7 @@ form.addEventListener("submit", (e) => {
   const sigV = parseInt(form.sigV.value);
   const I = parseFloat(form.corriente.value);
   const sigI = parseInt(form.sigI.value);
+  const errorInstrumento = parseFloat(form.error.value);
 
   if (I === 0) {
     resultadoDiv.textContent = "Error: La corriente no puede ser cero";
@@ -79,15 +84,23 @@ form.addEventListener("submit", (e) => {
   const cifras = Math.min(sigV, sigI);
   const resistencia = V / I;
   const resistenciaRedondeada = redondearCifrasSignificativas(resistencia, cifras);
+  
+  // Calcular el valor del error absoluto
+  const errorAbsoluto = (resistenciaRedondeada * errorInstrumento) / 100;
+  const errorAbsolutoRedondeado = redondearCifrasSignificativas(errorAbsoluto, cifras);
 
   resultadoDiv.innerHTML = `
     <div class="font-bold text-blue-800">Resistencia calculada:</div>
-    <div class="text-2xl mt-1">${resistenciaRedondeada} <span class="text-lg">Ω</span></div>
+    <div class="text-2xl mt-1">${resistenciaRedondeada} Ω ± ${errorInstrumento}%</div>
     <div class="text-sm text-blue-600 mt-1">(con ${cifras} cifras significativas)</div>
+    <div class="text-sm text-gray-600 mt-2">
+      <span class="font-medium">Valor real estimado:</span> 
+      ${resistenciaRedondeada} Ω ± ${errorAbsolutoRedondeado} Ω
+    </div>
   `;
   resultadoDiv.className = "text-center text-lg font-semibold text-blue-700 min-h-[2rem] p-3 bg-blue-50 rounded-lg border border-blue-100";
 
-  guardarHistorial(V, sigV, I, sigI, resistenciaRedondeada, cifras);
+  guardarHistorial(V, sigV, I, sigI, resistenciaRedondeada, cifras, errorInstrumento);
 });
 
 // Limpiar historial
@@ -102,8 +115,6 @@ function limpiarHistorial() {
 window.limpiarHistorial = limpiarHistorial;
 
 // Exportar PDF mejorado
-// Exportar PDF mejorado - Versión profesional centrada
-// Exportar PDF mejorado - Versión profesional centrada
 async function exportarPDF() {
   if (historial.length === 0) {
     alert("No hay datos en el historial para exportar");
@@ -170,34 +181,42 @@ async function exportarPDF() {
       styles: { halign: 'center', fillColor: [29, 78, 216], textColor: 255, fontStyle: 'bold' } 
     },
     { 
-      content: "Cifras \nSignificativas", 
+      content: "Error (%)", 
+      styles: { halign: 'center', fillColor: [29, 78, 216], textColor: 255, fontStyle: 'bold' } 
+    },
+    { 
+      content: "Cifras Sig.", 
       styles: { halign: 'center', fillColor: [29, 78, 216], textColor: 255, fontStyle: 'bold' } 
     }
   ];
   
   const data = historial.map((item, index) => [
-    { 
-      content: (index + 1).toString(), 
-      styles: { halign: 'center' } 
-    },
-    { 
-      content: `${item.V} V`, 
-      styles: { halign: 'center', fontStyle: 'bold' } 
-    },
-    { 
-      content: `${item.I} A`, 
-      styles: { halign: 'center', fontStyle: 'bold' } 
-      
-    },
-    { 
-      content: `${item.R.toString()} Ohm`,
-      styles: { halign: 'center', fontStyle: 'bold' } 
-    },
-    { 
-      content: item.cifras.toString(), 
-      styles: { halign: 'center' } 
-    }
-  ]);
+  { 
+    content: (index + 1).toString(), 
+    styles: { halign: 'center' } 
+  },
+  { 
+    content: `${item?.V ?? '-'} V`, 
+    styles: { halign: 'center', fontStyle: 'bold' } 
+  },
+  { 
+    content: `${item?.I ?? '-'} A`, 
+    styles: { halign: 'center', fontStyle: 'bold' } 
+  },
+  { 
+    content: `${item?.R ?? '-'} Ohm ± ${item?.error ?? '-'}%`,
+    styles: { halign: 'center', fontStyle: 'bold' } 
+  },
+  { 
+    content: `${item?.error?.toString() ?? '-'} %`, 
+    styles: { halign: 'center', fontStyle: 'bold'  } 
+  },
+  { 
+    content: item?.cifras?.toString() ?? '-', 
+    styles: { halign: 'center',  fontStyle: 'bold'   } 
+  }
+]);
+
   
   doc.autoTable({
     startY: 60,
@@ -223,13 +242,14 @@ async function exportarPDF() {
     },
     columnStyles: {
       0: { cellWidth: 15 },
-      1: { cellWidth: 40 },
-      2: { cellWidth: 40 },
+      1: { cellWidth: 30 },
+      2: { cellWidth: 32 },
       3: { cellWidth: 40 },
-      4: { cellWidth: 35 }
+      4: { cellWidth: 25 },
+      5: { cellWidth: 20 }
     },
     margin: { 
-      left: margin,
+      left: margin + 4,
       right: margin
     }
   });
@@ -245,7 +265,6 @@ async function exportarPDF() {
     // Firma o información adicional
     doc.setFontSize(8);
     doc.text("Calculadora de Resistencia \nTodos los Derechos Reservados | Grupo MND-ELTR-500112700-012", pageWidth / 2, 285, { align: "center" });
-    
   }
   
   // Guardar con nombre profesional
